@@ -152,6 +152,15 @@ public class F5TTS: Module {
             let estimatedDurationInSeconds = durationPredictor(cond, text: text).item(Float32.self)
             resolvedDuration = MLXArray(Int(Double(estimatedDurationInSeconds) * F5TTS.framesPerSecond))
         }
+        
+        // Fallback: estimate from text length if no duration predictor
+        // Conservative estimate: ~10 characters per second of audio
+        if resolvedDuration == nil {
+            let totalChars = text.reduce(0) { $0 + $1.count }
+            let estimatedSeconds = max(1.0, Double(totalChars) / 10.0)
+            resolvedDuration = MLXArray(Int(estimatedSeconds * F5TTS.framesPerSecond))
+            print("Warning: no duration predictor, estimating \(estimatedSeconds)s from \(totalChars) characters")
+        }
 
         guard let resolvedDuration else {
             throw F5TTSError.unableToDetermineDuration
