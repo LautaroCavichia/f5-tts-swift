@@ -320,10 +320,18 @@ public extension F5TTS {
         var modelWeights = try loadArrays(url: modelURL)
         
         // Filter out training-related keys that some models include
-        // (e.g., Spanish model has ema_model, initted, step)
-        let trainingKeys = ["ema_model", "initted", "step"]
-        for key in trainingKeys {
-            modelWeights.removeValue(forKey: key)
+        // Spanish model has nested keys like ema_model.transformer.*, so filter by prefix
+        let trainingPrefixes = ["ema_model."]
+        let trainingKeys = ["initted", "step"]
+        
+        modelWeights = modelWeights.filter { key, _ in
+            // Remove if key matches exact training keys
+            if trainingKeys.contains(key) { return false }
+            // Remove if key starts with any training prefix
+            for prefix in trainingPrefixes {
+                if key.hasPrefix(prefix) { return false }
+            }
+            return true
         }
 
         // mel spec
