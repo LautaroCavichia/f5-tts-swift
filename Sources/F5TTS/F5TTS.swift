@@ -88,6 +88,9 @@ public class F5TTS: Module {
     let numChannels: Int
     let vocabCharMap: [String: Int]
     let _durationPredictor: DurationPredictor?
+    
+    // PERF: Cache Vocos vocoder to avoid reloading every generate() call
+    private var cachedVocos: Vocos?
 
     init(
         transformer: DiT,
@@ -245,15 +248,23 @@ public class F5TTS: Module {
         referenceAudioText: String? = nil,
         duration: TimeInterval? = nil,
         steps: Int = 8,
-        method: ODEMethod = .rk4,
+        method: ODEMethod = .euler,  // PERF: euler is ~2-3x faster than rk4
         cfg: Double = 2.0,
         sway: Double = -1.0,
         speed: Double = 1.0,
         seed: Int? = nil,
         progressHandler: ((Double) -> Void)? = nil
     ) async throws -> MLXArray {
-        print("Loading Vocos model...")
-        let vocos = try await Vocos.fromPretrained(repoId: "lucasnewman/vocos-mel-24khz-mlx")
+        // PERF: Cache Vocos to avoid reloading every call (~5-10s overhead)
+        let vocos: Vocos
+        if let cached = cachedVocos {
+            print("Using cached Vocos model")
+            vocos = cached
+        } else {
+            print("Loading Vocos model (first time, will be cached)...")
+            vocos = try await Vocos.fromPretrained(repoId: "lucasnewman/vocos-mel-24khz-mlx")
+            cachedVocos = vocos
+        }
 
         // load the reference audio + text
 
@@ -287,7 +298,6 @@ public class F5TTS: Module {
             seed: seed,
             vocoder: vocos.decode
         ) { progress in
-            print("Generation progress: \(progress)")
             progressHandler?(progress)
         }
 
