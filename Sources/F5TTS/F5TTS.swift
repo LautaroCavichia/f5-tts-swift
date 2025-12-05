@@ -348,7 +348,7 @@ public extension F5TTS {
                 melSpec: MelSpec(filterbank: filterbank),
                 vocabCharMap: vocab
             )
-            try predictor.update(parameters: ModuleParameters.unflattened(durationModelWeights), verify: [.all])
+            try predictor.update(parameters: ModuleParameters.unflattened(durationModelWeights), verify: [.noUnusedKeys])
 
             durationPredictor = predictor
         } catch {
@@ -372,7 +372,9 @@ public extension F5TTS {
             vocabCharMap: vocab,
             durationPredictor: durationPredictor
         )
-        try f5tts.update(parameters: ModuleParameters.unflattened(modelWeights), verify: [.all])
+        // NOTE: Using .noUnusedKeys because melSpec.filterbank is loaded from bundled NPY file,
+        // not from the safetensors model weights
+        try f5tts.update(parameters: ModuleParameters.unflattened(modelWeights), verify: [.noUnusedKeys])
 
         return f5tts
     }
