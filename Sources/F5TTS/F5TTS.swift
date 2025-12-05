@@ -317,7 +317,14 @@ public extension F5TTS {
 
     static func fromPretrained(modelDirectoryURL: URL) throws -> F5TTS {
         let modelURL = modelDirectoryURL.appendingPathComponent("model.safetensors")
-        let modelWeights = try loadArrays(url: modelURL)
+        var modelWeights = try loadArrays(url: modelURL)
+        
+        // Filter out training-related keys that some models include
+        // (e.g., Spanish model has ema_model, initted, step)
+        let trainingKeys = ["ema_model", "initted", "step"]
+        for key in trainingKeys {
+            modelWeights.removeValue(forKey: key)
+        }
 
         // mel spec
 
